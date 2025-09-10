@@ -1,4 +1,4 @@
-// Versão 1.7
+// Versão 1.9 - Para forçar a atualização do cache
 self.addEventListener("install", (e) => {
     e.waitUntil(
         caches.open("calc3d-store").then((cache) => {
@@ -6,7 +6,7 @@ self.addEventListener("install", (e) => {
                 "index.html",
                 "script.js",
                 "manifest.json",
-                "icons/icon-192.png", // Verifique se essa linha está aqui!
+                "icons/icon-192.png",
                 "icons/icon-512.png"
             ]);
         })
@@ -20,4 +20,3 @@ self.addEventListener("fetch", (e) => {
         })
     );
 });
-
