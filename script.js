@@ -1,4 +1,4 @@
-// Versão 1.5 - Comentário para controle de cache
+// Versão 1.6 - Comentário para controle de cache
 const { jsPDF } = window.jspdf;
 
 // Função principal da calculadora
@@ -104,61 +104,96 @@ function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
 // Função para gerar o PDF
 function gerarOrçamento() {
     const doc = new jsPDF();
-    const clientName = document.getElementById('clientName').value;
+
+    // Dados do formulário
+    const clientName = document.getElementById('clientName').value.trim();
     const mainText = document.getElementById('mainText').value;
     const tableData = document.getElementById('tableData').value;
     const additionalText = document.getElementById('additionalText').value;
     const signature = document.getElementById('signature').value;
 
+    // Margens
     const leftMargin = 20;
     const rightMargin = 20;
     const pageWidth = doc.internal.pageSize.width;
     const contentWidth = pageWidth - leftMargin - rightMargin;
 
-    let cursorY = 40;
-    doc.setFontSize(12);
+    // --- CONFIGURAÇÕES DO LOGO ---
+    const logoWidth = 50;  
+    const logoHeight = 25; 
+    const logoY = 10; 
 
-    // Adiciona título
-    const imposto = parseFloat(document.getElementById('imposto').value);
-    let titulo;
-    if (imposto > 0) {
-        titulo = "Orçamento com Imposto";
-    } else {
-        titulo = "Orçamento sem Imposto";
+    // Função para desenhar cabeçalho em cada página
+    function drawHeader(doc) {
+        try {
+            const logoX = (pageWidth - logoWidth) / 2; // centralizado
+            doc.addImage("logo.png", "PNG", logoX, logoY, logoWidth, logoHeight);
+        } catch (e) {
+            console.warn("Logo não encontrado. Certifique-se de que 'logo.png' está na pasta correta.");
+        }
     }
 
-    doc.text(titulo, leftMargin, cursorY);
-    cursorY += 10;
-    doc.text(`Para: ${clientName}`, leftMargin, cursorY);
-    cursorY += 20;
+    // Desenha o cabeçalho na primeira página
+    drawHeader(doc);
 
-    // Adiciona texto principal
+    let cursorY = 40; // espaço inicial após o logo
+
+    // --- TÍTULO ---
+    const imposto = parseFloat(document.getElementById('imposto').value);
+    let titulo = imposto > 0 ? "Orçamento com Imposto" : "Orçamento sem Imposto";
+
+    doc.setFontSize(14);
+    doc.setTextColor(200, 0, 0); 
+    doc.text(titulo, pageWidth / 2, cursorY, { align: "center" });
+    cursorY += 10;
+
+    // Nome do cliente
+    if (clientName) {
+        doc.setFontSize(13);
+        doc.setTextColor(50, 50, 50); 
+        doc.text(`Proposta de orçamento para ${clientName}`, pageWidth / 2, cursorY, { align: "center" });
+        cursorY += 20;
+    }
+
+    // Reset para texto normal
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+
+    // --- TEXTO PRINCIPAL ---
     doc.text(mainText, leftMargin, cursorY, { maxWidth: contentWidth });
-    cursorY = doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + cursorY;
-    cursorY += 10;
+    cursorY += doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + 10;
 
-    // Adiciona tabela
+    // --- TABELA ---
     const tableRows = tableData.split('\n').map(row => row.split('/'));
     doc.autoTable({
         startY: cursorY,
         head: [tableRows[0]],
         body: tableRows.slice(1),
         theme: 'grid',
-        styles: { cellPadding: 2, fontSize: 10, },
-        margin: { left: leftMargin, right: rightMargin }
+        styles: { cellPadding: 2, fontSize: 10 },
+        margin: { left: leftMargin, right: rightMargin },
+
+        // Repete o cabeçalho a cada página
+        didDrawPage: function (data) {
+            drawHeader(doc);
+        }
     });
 
     cursorY = doc.autoTable.previous.finalY + 10;
 
-    // Adiciona texto adicional
+    // --- TEXTO ADICIONAL ---
     doc.text(additionalText, leftMargin, cursorY, { maxWidth: contentWidth });
-    cursorY = doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + cursorY;
-    cursorY += 30;
-    
-    // Adiciona assinatura
+    cursorY += doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + 30;
+
+    // --- ASSINATURA ---
+    doc.setFontSize(12);
     doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
 
-    // Salva o PDF
-    const fileName = `Orçamento_${clientName || 'Cliente'}.pdf`;
+    // --- SALVAR PDF ---
+    let safeClientName = clientName
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+        .replace(/[^a-zA-Z0-9-_]/g, "_"); 
+
+    const fileName = `Orcamento_${safeClientName || 'Cliente'}.pdf`;
     doc.save(fileName);
 }
