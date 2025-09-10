@@ -1,34 +1,5 @@
-// Versão 2.5 - Correção do botão calcular, cores no PDF e logo
+// Versão 1.5 - Comentário para controle de cache
 const { jsPDF } = window.jspdf;
-
-// Variável para armazenar o logo em Base64
-let vertoMakerLogoBase64 = '';
-
-// Função para converter o logo em Base64 e garantir que esteja pronto antes de gerar o PDF
-function loadLogoAndInitialize() {
-    const img = new Image();
-    img.src = 'icons/icon-192.png'; // Caminho do seu logo
-    img.onload = () => {
-        const canvas = document.createElement('canvas');
-        // Define uma largura fixa para o canvas, mantendo a proporção
-        const imgWidth = 10; // Largura desejada no PDF
-        const imgHeight = (img.height / img.width) * imgWidth;
-
-        canvas.width = imgWidth;
-        canvas.height = imgHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, imgWidth, imgHeight); // Desenha a imagem com as novas dimensões
-        vertoMakerLogoBase64 = canvas.toDataURL('image/png');
-        console.log('Logo VertoMaker carregado com sucesso para Base64.');
-    };
-    img.onerror = () => {
-        console.error('Erro ao carregar o logo da VertoMaker. Verifique o caminho (icons/icon-192.png).');
-    };
-}
-
-// Chame a função para carregar o logo quando o script for carregado
-document.addEventListener('DOMContentLoaded', loadLogoAndInitialize);
-
 
 // Função principal da calculadora
 function calcular() {
@@ -114,12 +85,12 @@ function calcular() {
     document.getElementById('resultados').classList.remove('hidden');
 
     // Preenche e exibe a seção de orçamento
-    preencherOrcamento(valorUnitarioFinal, valorTotalFinal, pecas);
+    preencherOrcamento(valorUnitarioFinal, valorTotalFinal, pecas, tituloOrcamento);
     document.getElementById('orcamento-section').classList.remove('hidden');
 }
 
 // Função para preencher os dados do orçamento com base no cálculo
-function preencherOrcamento(unidadeFinal, loteFinal, pecas) {
+function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
     const valorUnitarioFormatado = unidadeFinal.toFixed(2).replace('.', ',');
     const valorTotalFormatado = loteFinal.toFixed(2).replace('.', ',');
     const nomePeca = `Impressão 3D (${pecas} peça${pecas > 1 ? 's' : ''})`;
@@ -127,6 +98,7 @@ function preencherOrcamento(unidadeFinal, loteFinal, pecas) {
     const tableData = `Descrição/Valor Final\n${nomePeca}/R$ ${valorTotalFormatado}`;
     
     document.getElementById('tableData').value = tableData;
+    // O título será atualizado dentro da função gerarOrcamento()
 }
 
 // Função para gerar o PDF
@@ -143,19 +115,10 @@ function gerarOrçamento() {
     const pageWidth = doc.internal.pageSize.width;
     const contentWidth = pageWidth - leftMargin - rightMargin;
 
-    let cursorY = 40; // Posição inicial do cursor
+    let cursorY = 40;
+    doc.setFontSize(12);
 
-    // --- Cabeçalho com Logo ---
-    if (vertoMakerLogoBase64) {
-        // Ajuste as dimensões (largura, altura) e posição (x, y) do logo conforme necessário
-        // Largura: 50, Altura: 15 (exemplo, ajuste conforme a proporção do seu logo)
-        doc.addImage(vertoMakerLogoBase64, 'PNG', leftMargin, 10, 50, (50 / doc.getImageProperties(vertoMakerLogoBase64).width) * doc.getImageProperties(vertoMakerLogoBase64).height); 
-        cursorY = 35; // Ajusta o cursor Y após o logo
-    } else {
-        console.warn('Logo VertoMaker não carregado, pulando adição ao PDF.');
-    }
-    
-    // --- Título do Orçamento ---
+    // Adiciona título
     const imposto = parseFloat(document.getElementById('imposto').value);
     let titulo;
     if (imposto > 0) {
@@ -164,65 +127,38 @@ function gerarOrçamento() {
         titulo = "Orçamento sem Imposto";
     }
 
-    doc.setFontSize(16);
-    doc.setTextColor(255, 0, 0); // Cor vermelha para o título
     doc.text(titulo, leftMargin, cursorY);
     cursorY += 10;
-
-    // --- Nome do Cliente (Vermelho e Negrito) ---
-    doc.setFontSize(12);
-    doc.setTextColor(255, 0, 0); // Cor vermelha
-    doc.setFont(undefined, 'bold'); // Negrito
     doc.text(`Para: ${clientName}`, leftMargin, cursorY);
-    doc.setFont(undefined, 'normal'); // Volta ao normal para o restante do texto
-    doc.setTextColor(0, 0, 0); // Volta à cor preta padrão
-    cursorY += 20; // Espaçamento após o nome do cliente
+    cursorY += 20;
 
-    // --- Texto Principal ---
-    doc.setFontSize(12);
+    // Adiciona texto principal
     doc.text(mainText, leftMargin, cursorY, { maxWidth: contentWidth });
     cursorY = doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + cursorY;
     cursorY += 10;
 
-    // --- Tabela ---
+    // Adiciona tabela
     const tableRows = tableData.split('\n').map(row => row.split('/'));
     doc.autoTable({
         startY: cursorY,
         head: [tableRows[0]],
         body: tableRows.slice(1),
         theme: 'grid',
-        headStyles: {
-            fillColor: [255, 0, 0], // Vermelho para o fundo do cabeçalho
-            textColor: [255, 255, 255], // Branco para o texto do cabeçalho
-            fontStyle: 'bold' // Negrito para o texto do cabeçalho
-        },
-        styles: {
-            cellPadding: 2,
-            fontSize: 10,
-            lineColor: [200, 200, 200], // Cor da linha da borda da tabela
-            lineWidth: 0.1,
-            textColor: [0,0,0] // Garante que o texto do corpo da tabela seja preto
-        },
+        styles: { cellPadding: 2, fontSize: 10, },
         margin: { left: leftMargin, right: rightMargin }
     });
 
     cursorY = doc.autoTable.previous.finalY + 10;
 
-    // --- Texto Adicional ---
+    // Adiciona texto adicional
     doc.text(additionalText, leftMargin, cursorY, { maxWidth: contentWidth });
     cursorY = doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + cursorY;
     cursorY += 30;
     
-    // --- Assinatura ---
+    // Adiciona assinatura
     doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
 
     // Salva o PDF
     const fileName = `Orçamento_${clientName || 'Cliente'}.pdf`;
     doc.save(fileName);
-}
-
-// Registro do service worker para PWA
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js")
-    .then(() => console.log("Service Worker registrado"));
 }
