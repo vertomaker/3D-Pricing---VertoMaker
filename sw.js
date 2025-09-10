@@ -1,4 +1,4 @@
-// Versão 1.9 - Para forçar a atualização do cache
+// Versão 2.1 - Para forçar a atualização do cache
 self.addEventListener("install", (e) => {
     e.waitUntil(
         caches.open("calc3d-store").then((cache) => {
