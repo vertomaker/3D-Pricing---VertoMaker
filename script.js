@@ -1,4 +1,4 @@
-// Versão 2.1 - Correção do botão calcular, cores no PDF e logo
+// Versão 2.2 - Correção do botão calcular, cores no PDF e logo
 const { jsPDF } = window.jspdf;
 
 // Variável para armazenar o logo em Base64
