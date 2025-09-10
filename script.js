@@ -1,4 +1,4 @@
-// Versão 1.6 - Comentário para controle de cache
+// Versão 1.7 - Comentário para controle de cache
 const { jsPDF } = window.jspdf;
 
 // Função principal da calculadora
@@ -118,39 +118,28 @@ function gerarOrçamento() {
     const pageWidth = doc.internal.pageSize.width;
     const contentWidth = pageWidth - leftMargin - rightMargin;
 
-    // --- CONFIGURAÇÕES DO LOGO ---
-    const logoWidth = 50;  
-    const logoHeight = 25; 
-    const logoY = 10; 
-
-    // Função para desenhar cabeçalho em cada página
-    function drawHeader(doc) {
-        try {
-            const logoX = (pageWidth - logoWidth) / 2; // centralizado
-            doc.addImage("logo.png", "PNG", logoX, logoY, logoWidth, logoHeight);
-        } catch (e) {
-            console.warn("Logo não encontrado. Certifique-se de que 'logo.png' está na pasta correta.");
-        }
+    // --- LOGO ---
+    try {
+        doc.addImage("logo.png", "PNG", 15, 10, 40, 20); // X, Y, largura, altura
+    } catch (e) {
+        console.warn("Logo não encontrado. Certifique-se de que 'logo.png' está na pasta correta.");
     }
 
-    // Desenha o cabeçalho na primeira página
-    drawHeader(doc);
-
-    let cursorY = 40; // espaço inicial após o logo
+    let cursorY = 40;
 
     // --- TÍTULO ---
     const imposto = parseFloat(document.getElementById('imposto').value);
     let titulo = imposto > 0 ? "Orçamento com Imposto" : "Orçamento sem Imposto";
 
     doc.setFontSize(14);
-    doc.setTextColor(200, 0, 0); 
+    doc.setTextColor(200, 0, 0); // vermelho
     doc.text(titulo, pageWidth / 2, cursorY, { align: "center" });
     cursorY += 10;
 
-    // Nome do cliente
+    // Nome do cliente em destaque
     if (clientName) {
         doc.setFontSize(13);
-        doc.setTextColor(50, 50, 50); 
+        doc.setTextColor(50, 50, 50); // cinza escuro
         doc.text(`Proposta de orçamento para ${clientName}`, pageWidth / 2, cursorY, { align: "center" });
         cursorY += 20;
     }
@@ -171,12 +160,7 @@ function gerarOrçamento() {
         body: tableRows.slice(1),
         theme: 'grid',
         styles: { cellPadding: 2, fontSize: 10 },
-        margin: { left: leftMargin, right: rightMargin },
-
-        // Repete o cabeçalho a cada página
-        didDrawPage: function (data) {
-            drawHeader(doc);
-        }
+        margin: { left: leftMargin, right: rightMargin }
     });
 
     cursorY = doc.autoTable.previous.finalY + 10;
@@ -190,9 +174,10 @@ function gerarOrçamento() {
     doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
 
     // --- SALVAR PDF ---
+    // Sanitiza o nome do cliente para o arquivo
     let safeClientName = clientName
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-        .replace(/[^a-zA-Z0-9-_]/g, "_"); 
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+        .replace(/[^a-zA-Z0-9-_]/g, "_"); // troca caracteres inválidos por "_"
 
     const fileName = `Orcamento_${safeClientName || 'Cliente'}.pdf`;
     doc.save(fileName);
