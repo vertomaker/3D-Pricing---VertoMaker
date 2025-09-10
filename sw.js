@@ -1,4 +1,4 @@
-// Versão 1.7 (atualize este número a cada alteração no sw.js)
+// Versão 1.7
 self.addEventListener("install", (e) => {
     e.waitUntil(
         caches.open("calc3d-store").then((cache) => {
@@ -6,18 +6,10 @@ self.addEventListener("install", (e) => {
                 "index.html",
                 "script.js",
                 "manifest.json",
-                "icons/icon-192.png",
-                "icons/icon-512.png",
-                "logo.png" // Adicione o caminho do seu logo aqui!
+                "icons/icon-192.png", // Verifique se essa linha está aqui!
+                "icons/icon-512.png"
             ]);
         })
     );
 });
-
-self.addEventListener("fetch", (e) => {
-    e.respondWith(
-        caches.match(e.request).then((response) => {
-            return response || fetch(e.request);
-        })
-    );
-});
+// ... (restante do código)
