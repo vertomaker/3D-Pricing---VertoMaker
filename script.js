@@ -1,4 +1,4 @@
-// Versão 2.4 - Ajustes de tamanho e posição do logo, cores de texto do PDF
+// Versão 2.5 - Correção do botão calcular, cores no PDF e logo
 const { jsPDF } = window.jspdf;
 
 // Variável para armazenar o logo em Base64
@@ -10,15 +10,14 @@ function loadLogoAndInitialize() {
     img.src = 'icons/icon-192.png'; // Caminho do seu logo
     img.onload = () => {
         const canvas = document.createElement('canvas');
-        // Mantém a proporção da imagem original
-        const aspectRatio = img.width / img.height;
-        const targetHeight = 15; // Altura alvo para o logo no PDF (ajustável)
-        const targetWidth = targetHeight * aspectRatio; // Calcula largura para manter proporção
+        // Define uma largura fixa para o canvas, mantendo a proporção
+        const imgWidth = 10; // Largura desejada no PDF
+        const imgHeight = (img.height / img.width) * imgWidth;
 
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
+        canvas.width = imgWidth;
+        canvas.height = imgHeight;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight); // Desenha a imagem com as novas dimensões
+        ctx.drawImage(img, 0, 0, imgWidth, imgHeight); // Desenha a imagem com as novas dimensões
         vertoMakerLogoBase64 = canvas.toDataURL('image/png');
         console.log('Logo VertoMaker carregado com sucesso para Base64.');
     };
@@ -79,13 +78,16 @@ function calcular() {
     // Condição para determinar qual valor será usado no orçamento
     let valorUnitarioFinal;
     let valorTotalFinal;
+    let tituloOrcamento;
 
     if (imposto > 0) {
         valorUnitarioFinal = unidadeComImposto;
         valorTotalFinal = loteComImposto;
+        tituloOrcamento = "Orçamento com Imposto";
     } else {
         valorUnitarioFinal = unidadeSemImposto;
         valorTotalFinal = loteSemImposto;
+        tituloOrcamento = "Orçamento sem Imposto";
     }
 
     // Exibe os resultados na tela
@@ -145,12 +147,10 @@ function gerarOrçamento() {
 
     // --- Cabeçalho com Logo ---
     if (vertoMakerLogoBase64) {
-        const imgProps = doc.getImageProperties(vertoMakerLogoBase64);
-        const imgHeight = 15; // Altura fixa para o logo
-        const imgWidth = (imgProps.width * imgHeight) / imgProps.height; // Calcula largura mantendo proporção
-
-        doc.addImage(vertoMakerLogoBase64, 'PNG', leftMargin, 10, imgWidth, imgHeight); 
-        cursorY = 10 + imgHeight + 10; // Posição Y do texto abaixo do logo com espaçamento
+        // Ajuste as dimensões (largura, altura) e posição (x, y) do logo conforme necessário
+        // Largura: 50, Altura: 15 (exemplo, ajuste conforme a proporção do seu logo)
+        doc.addImage(vertoMakerLogoBase64, 'PNG', leftMargin, 10, 50, (50 / doc.getImageProperties(vertoMakerLogoBase64).width) * doc.getImageProperties(vertoMakerLogoBase64).height); 
+        cursorY = 35; // Ajusta o cursor Y após o logo
     } else {
         console.warn('Logo VertoMaker não carregado, pulando adição ao PDF.');
     }
@@ -165,13 +165,13 @@ function gerarOrçamento() {
     }
 
     doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0); // Cor preta para o título
+    doc.setTextColor(255, 0, 0); // Cor vermelha para o título
     doc.text(titulo, leftMargin, cursorY);
     cursorY += 10;
 
-    // --- Nome do Cliente (Preto e Negrito) ---
+    // --- Nome do Cliente (Vermelho e Negrito) ---
     doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0); // Cor preta
+    doc.setTextColor(255, 0, 0); // Cor vermelha
     doc.setFont(undefined, 'bold'); // Negrito
     doc.text(`Para: ${clientName}`, leftMargin, cursorY);
     doc.setFont(undefined, 'normal'); // Volta ao normal para o restante do texto
@@ -181,4 +181,48 @@ function gerarOrçamento() {
     // --- Texto Principal ---
     doc.setFontSize(12);
     doc.text(mainText, leftMargin, cursorY, { maxWidth: contentWidth });
-    cursorY = doc.getTextDimensions(mainText,
+    cursorY = doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + cursorY;
+    cursorY += 10;
+
+    // --- Tabela ---
+    const tableRows = tableData.split('\n').map(row => row.split('/'));
+    doc.autoTable({
+        startY: cursorY,
+        head: [tableRows[0]],
+        body: tableRows.slice(1),
+        theme: 'grid',
+        headStyles: {
+            fillColor: [255, 0, 0], // Vermelho para o fundo do cabeçalho
+            textColor: [255, 255, 255], // Branco para o texto do cabeçalho
+            fontStyle: 'bold' // Negrito para o texto do cabeçalho
+        },
+        styles: {
+            cellPadding: 2,
+            fontSize: 10,
+            lineColor: [200, 200, 200], // Cor da linha da borda da tabela
+            lineWidth: 0.1,
+            textColor: [0,0,0] // Garante que o texto do corpo da tabela seja preto
+        },
+        margin: { left: leftMargin, right: rightMargin }
+    });
+
+    cursorY = doc.autoTable.previous.finalY + 10;
+
+    // --- Texto Adicional ---
+    doc.text(additionalText, leftMargin, cursorY, { maxWidth: contentWidth });
+    cursorY = doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + cursorY;
+    cursorY += 30;
+    
+    // --- Assinatura ---
+    doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
+
+    // Salva o PDF
+    const fileName = `Orçamento_${clientName || 'Cliente'}.pdf`;
+    doc.save(fileName);
+}
+
+// Registro do service worker para PWA
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+    .then(() => console.log("Service Worker registrado"));
+}
