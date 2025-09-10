@@ -1,4 +1,4 @@
-// Versão 2.0 - Adição de logo no PDF, cliente em negrito/vermelho, tabela estilizada
+// Versão 2.1 - Adição de logo no PDF, cliente em negrito/vermelho, tabela estilizada
 const { jsPDF } = window.jspdf;
 
 // Variável para armazenar o logo em Base64
@@ -110,4 +110,113 @@ function calcular() {
     document.getElementById('resultados').classList.remove('hidden');
 
     // Preenche e exibe a seção de orçamento
-    preencherOrcamento(valorUnitario
+    preencherOrcamento(valorUnitarioFinal, valorTotalFinal, pecas);
+    document.getElementById('orcamento-section').classList.remove('hidden');
+}
+
+// Função para preencher os dados do orçamento com base no cálculo
+function preencherOrcamento(unidadeFinal, loteFinal, pecas) {
+    const valorUnitarioFormatado = unidadeFinal.toFixed(2).replace('.', ',');
+    const valorTotalFormatado = loteFinal.toFixed(2).replace('.', ',');
+    const nomePeca = `Impressão 3D (${pecas} peça${pecas > 1 ? 's' : ''})`;
+
+    const tableData = `Descrição/Valor Final\n${nomePeca}/R$ ${valorTotalFormatado}`;
+    
+    document.getElementById('tableData').value = tableData;
+}
+
+// Função para gerar o PDF
+function gerarOrçamento() {
+    const doc = new jsPDF();
+    const clientName = document.getElementById('clientName').value;
+    const mainText = document.getElementById('mainText').value;
+    const tableData = document.getElementById('tableData').value;
+    const additionalText = document.getElementById('additionalText').value;
+    const signature = document.getElementById('signature').value;
+
+    const leftMargin = 20;
+    const rightMargin = 20;
+    const pageWidth = doc.internal.pageSize.width;
+    const contentWidth = pageWidth - leftMargin - rightMargin;
+
+    let cursorY = 40; // Posição inicial do cursor
+
+    // --- Cabeçalho com Logo ---
+    if (vertoMakerLogoBase64) {
+        // Ajuste as dimensões (largura, altura) e posição (x, y) do logo conforme necessário
+        doc.addImage(vertoMakerLogoBase64, 'PNG', leftMargin, 10, 50, 15); // x, y, largura, altura
+        cursorY = 35; // Ajusta o cursor Y após o logo
+    } else {
+        console.warn('Logo VertoMaker não carregado, pulando adição ao PDF.');
+    }
+    
+    // --- Título do Orçamento ---
+    const imposto = parseFloat(document.getElementById('imposto').value);
+    let titulo;
+    if (imposto > 0) {
+        titulo = "Orçamento com Imposto";
+    } else {
+        titulo = "Orçamento sem Imposto";
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(255, 0, 0); // Cor vermelha para o título
+    doc.text(titulo, leftMargin, cursorY);
+    cursorY += 10;
+
+    // --- Nome do Cliente (Vermelho e Negrito) ---
+    doc.setFontSize(12);
+    doc.setTextColor(255, 0, 0); // Cor vermelha
+    doc.setFont(undefined, 'bold'); // Negrito
+    doc.text(`Para: ${clientName}`, leftMargin, cursorY);
+    doc.setFont(undefined, 'normal'); // Volta ao normal para o restante do texto
+    doc.setTextColor(0, 0, 0); // Volta à cor preta padrão
+    cursorY += 20; // Espaçamento após o nome do cliente
+
+    // --- Texto Principal ---
+    doc.setFontSize(12);
+    doc.text(mainText, leftMargin, cursorY, { maxWidth: contentWidth });
+    cursorY = doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + cursorY;
+    cursorY += 10;
+
+    // --- Tabela ---
+    const tableRows = tableData.split('\n').map(row => row.split('/'));
+    doc.autoTable({
+        startY: cursorY,
+        head: [tableRows[0]],
+        body: tableRows.slice(1),
+        theme: 'grid',
+        headStyles: {
+            fillColor: [255, 0, 0], // Vermelho para o fundo do cabeçalho
+            textColor: [255, 255, 255], // Branco para o texto do cabeçalho
+            fontStyle: 'bold' // Negrito para o texto do cabeçalho
+        },
+        styles: {
+            cellPadding: 2,
+            fontSize: 10,
+            lineColor: [200, 200, 200], // Cor da linha da borda da tabela
+            lineWidth: 0.1
+        },
+        margin: { left: leftMargin, right: rightMargin }
+    });
+
+    cursorY = doc.autoTable.previous.finalY + 10;
+
+    // --- Texto Adicional ---
+    doc.text(additionalText, leftMargin, cursorY, { maxWidth: contentWidth });
+    cursorY = doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + cursorY;
+    cursorY += 30;
+    
+    // --- Assinatura ---
+    doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
+
+    // Salva o PDF
+    const fileName = `Orçamento_${clientName || 'Cliente'}.pdf`;
+    doc.save(fileName);
+}
+
+// Registro do service worker para PWA
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+    .then(() => console.log("Service Worker registrado"));
+}
