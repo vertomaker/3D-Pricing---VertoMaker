@@ -1,4 +1,4 @@
-// Versão 1.7 - Comentário para controle de cache
+// Versão 1.8 - Comentário para controle de cache
 const { jsPDF } = window.jspdf;
 
 // Função principal da calculadora
@@ -120,7 +120,7 @@ function gerarOrçamento() {
 
     // --- LOGO ---
     try {
-        doc.addImage("logo.png", "PNG", 15, 10, 40, 20); // X, Y, largura, altura
+        doc.addImage("image/logopdf.png", "PNG", 15, 10, 40, 20); // X, Y, largura, altura
     } catch (e) {
         console.warn("Logo não encontrado. Certifique-se de que 'logo.png' está na pasta correta.");
     }
@@ -138,14 +138,14 @@ function gerarOrçamento() {
 
     // Nome do cliente em destaque
     if (clientName) {
-        doc.setFontSize(13);
+        doc.setFontSize(14);
         doc.setTextColor(50, 50, 50); // cinza escuro
         doc.text(`Proposta de orçamento para ${clientName}`, pageWidth / 2, cursorY, { align: "center" });
         cursorY += 20;
     }
 
     // Reset para texto normal
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setTextColor(0, 0, 0);
 
     // --- TEXTO PRINCIPAL ---
@@ -170,7 +170,7 @@ function gerarOrçamento() {
     cursorY += doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + 30;
 
     // --- ASSINATURA ---
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
 
     // --- SALVAR PDF ---
