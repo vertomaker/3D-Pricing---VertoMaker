@@ -1,4 +1,4 @@
-// Versão 1.7 (atualize este número a cada alteração no sw.js)
+// Versão 1.8 (atualize este número a cada alteração no sw.js)
 self.addEventListener("install", (e) => {
     e.waitUntil(
         caches.open("calc3d-store").then((cache) => {
