@@ -1,4 +1,4 @@
-// Versão 2.5 - Para forçar a atualização do cache
+// Versão 1.7 (atualize este número a cada alteração no sw.js)
 self.addEventListener("install", (e) => {
     e.waitUntil(
         caches.open("calc3d-store").then((cache) => {
@@ -7,7 +7,8 @@ self.addEventListener("install", (e) => {
                 "script.js",
                 "manifest.json",
                 "icons/icon-192.png",
-                "icons/icon-512.png"
+                "icons/icon-512.png",
+                "logo.png" // Adicione o caminho do seu logo aqui!
             ]);
         })
     );
