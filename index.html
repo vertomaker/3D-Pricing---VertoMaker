@@ -21,15 +21,15 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block font-medium">Tempo de impressão (h)</label>
-                <input id="horas" type="number" class="w-full border rounded-lg p-2" value="16">
+                <input id="horas" type="number" class="w-full border rounded-lg p-2" value="0">
             </div>
             <div>
                 <label class="block font-medium">Tempo de impressão (min)</label>
-                <input id="minutos" type="number" class="w-full border rounded-lg p-2" value="11">
+                <input id="minutos" type="number" class="w-full border rounded-lg p-2" value="0">
             </div>
             <div>
                 <label class="block font-medium">Peso por unidade (g)</label>
-                <input id="peso" type="number" class="w-full border rounded-lg p-2" value="182">
+                <input id="peso" type="number" class="w-full border rounded-lg p-2" value="0">
             </div>
             <div>
                 <label class="block font-medium">Número de peças</label>
@@ -85,7 +85,7 @@
             </div>
             <div>
                 <label class="block font-medium">Lucro (%)</label>
-                <input id="lucro" type="number" class="w-full border rounded-lg p-2" value="70">
+                <input id="lucro" type="number" class="w-full border rounded-lg p-2" value="75">
             </div>
             <div>
                 <label class="block font-medium">Custos diversos (R$)</label>
@@ -123,7 +123,7 @@
                     <label class="block font-medium">Texto Principal do Orçamento:</label>
                     <textarea id="mainText" rows="5" class="w-full border rounded-lg p-2">
 Olá, segue a proposta de orçamento para a sua peça impressa em 3D.
-Este valor inclui todos os custos de produção, como material, energia, mão de obra e impostos.
+Este valor inclui todos os custos de produção, como material, energia, mão de obra (acabamento, pintura, etc) e impostos.
                     </textarea>
                 </div>
                 <div>
@@ -139,8 +139,8 @@ Esta proposta é de caráter informativo e não tem efeitos contratuais.
                     </textarea>
                 </div>
                 <div>
-                    <label class="block font-medium">Assinatura (Nome da Empresa):</label>
-                    <input type="text" id="signature" class="w-full border rounded-lg p-2" value="VertoMaker">
+                    <label class="block font-medium">Assinatura:</label>
+                    <input type="text" id="signature" class="w-full border rounded-lg p-2" value="Eric Melo">
                 </div>
             </div>
             <div class="mt-6">
