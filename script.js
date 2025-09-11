@@ -1,5 +1,66 @@
-// Versão 1.8 - Comentário para controle de cache
+// Versão 3.2 - Correção do problema do logo no PDF
 const { jsPDF } = window.jspdf;
+
+// Variável para armazenar o logo em Base64 após o carregamento
+let vertoMakerLogoBase64 = null;
+let logoLoaded = false;
+
+// Função para carregar o logo
+function loadLogo() {
+    return new Promise((resolve, reject) => {
+        // Se já está carregado, resolve imediatamente
+        if (logoLoaded && vertoMakerLogoBase64) {
+            resolve(vertoMakerLogoBase64);
+            return;
+        }
+
+        const img = new Image();
+        img.crossOrigin = 'Anonymous'; // Permite carregar imagens de diferentes origens
+        img.src = 'image/logopdf.png'; // Caminho do seu logo
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const imgWidth = 40; // Largura desejada no PDF
+                const imgHeight = 20; // Altura desejada no PDF
+                canvas.width = imgWidth;
+                canvas.height = imgHeight;
+                const ctx = canvas.getContext('2d');
+                
+                // Limpa o canvas e desenha a imagem
+                ctx.clearRect(0, 0, imgWidth, imgHeight);
+                ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
+                
+                vertoMakerLogoBase64 = canvas.toDataURL('image/png');
+                logoLoaded = true;
+                console.log('Logo VertoMaker carregado com sucesso.');
+                resolve(vertoMakerLogoBase64);
+            } catch (error) {
+                console.error('Erro ao processar o logo:', error);
+                reject(error);
+            }
+        };
+        
+        img.onerror = (error) => {
+            console.error('Erro ao carregar o logo. Verifique o caminho (image/logopdf.png).', error);
+            reject(error);
+        };
+        
+        // Timeout para evitar que a promise fique pendente para sempre
+        setTimeout(() => {
+            if (!logoLoaded) {
+                reject(new Error('Timeout ao carregar o logo'));
+            }
+        }, 5000);
+    });
+}
+
+// Carrega o logo quando a página é carregada
+document.addEventListener('DOMContentLoaded', function() {
+    loadLogo().catch(error => {
+        console.warn('Não foi possível carregar o logo:', error.message);
+    });
+});
 
 // Função principal da calculadora
 function calcular() {
@@ -101,84 +162,124 @@ function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
     // O título será atualizado dentro da função gerarOrcamento()
 }
 
-// Função para gerar o PDF
-function gerarOrçamento() {
-    const doc = new jsPDF();
-
-    // Dados do formulário
-    const clientName = document.getElementById('clientName').value.trim();
-    const mainText = document.getElementById('mainText').value;
-    const tableData = document.getElementById('tableData').value;
-    const additionalText = document.getElementById('additionalText').value;
-    const signature = document.getElementById('signature').value;
-
-    // Margens
-    const leftMargin = 20;
-    const rightMargin = 20;
-    const pageWidth = doc.internal.pageSize.width;
-    const contentWidth = pageWidth - leftMargin - rightMargin;
-
-    // --- LOGO ---
+// Função para gerar o PDF - VERSÃO CORRIGIDA
+async function gerarOrçamento() {
     try {
-        doc.addImage("image/logopdf.png", "PNG", 15, 10, 40, 20); // X, Y, largura, altura
-    } catch (e) {
-        console.warn("Logo não encontrado. Certifique-se de que 'logo.png' está na pasta correta.");
-    }
+        const doc = new jsPDF();
 
-    let cursorY = 40;
+        // Dados do formulário
+        const clientName = document.getElementById('clientName').value.trim();
+        const mainText = document.getElementById('mainText').value;
+        const tableData = document.getElementById('tableData').value;
+        const additionalText = document.getElementById('additionalText').value;
+        const signature = document.getElementById('signature').value;
 
-    // --- TÍTULO ---
-    const imposto = parseFloat(document.getElementById('imposto').value);
-    let titulo = imposto > 0 ? "Orçamento com Imposto" : "Orçamento sem Imposto";
+        // Margens
+        const leftMargin = 20;
+        const rightMargin = 20;
+        const pageWidth = doc.internal.pageSize.width;
+        const contentWidth = pageWidth - leftMargin - rightMargin;
 
-    doc.setFontSize(14);
-    doc.setTextColor(200, 0, 0); // vermelho
-    doc.text(titulo, pageWidth / 2, cursorY, { align: "center" });
-    cursorY += 10;
+        let cursorY = 20; // Posição inicial do cursor
 
-    // Nome do cliente em destaque
-    if (clientName) {
+        // --- Cabeçalho com Logo ---
+        try {
+            const logoData = await loadLogo();
+            if (logoData) {
+                doc.addImage(logoData, 'PNG', leftMargin, 10, 40, 20);
+                cursorY = 40; // Ajusta a posição após o logo
+            }
+        } catch (error) {
+            console.warn('Logo não disponível, continuando sem ele:', error.message);
+        }
+
+        // Título do orçamento (centralizado)
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(255, 0, 0); // Vermelho
+        doc.text('VERTOMAKER - ORÇAMENTO', pageWidth / 2, cursorY, { align: "center" });
+        cursorY += 10;
+
+        // Nome do cliente em destaque
+        if (clientName) {
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0); // cor preta
+            doc.text(`Proposta de orçamento para: ${clientName}`, pageWidth / 2, cursorY, { align: "center" });
+            cursorY += 15;
+        }
+
+        // Data atual
+        const dataAtual = new Date().toLocaleDateString('pt-BR');
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Data: ${dataAtual}`, pageWidth - rightMargin, cursorY, { align: "right" });
+        cursorY += 10;
+
+        // Reset para texto normal
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'normal');
+
+        // --- TEXTO PRINCIPAL ---
+        const mainTextLines = doc.splitTextToSize(mainText, contentWidth);
+        doc.text(mainTextLines, leftMargin, cursorY);
+        cursorY += (mainTextLines.length * 6) + 10;
+
+        // --- Tabela ---
+        const tableRows = tableData.split('\n').map(row => row.split('/'));
+        
+        doc.autoTable({
+            startY: cursorY,
+            head: [tableRows[0]],
+            body: tableRows.slice(1),
+            theme: 'grid',
+            headStyles: {
+                fillColor: [255, 0, 0], // Vermelho para o fundo do cabeçalho
+                textColor: [255, 255, 255], // Branco para o texto do cabeçalho
+                fontStyle: 'bold'
+            },
+            styles: {
+                cellPadding: 3,
+                fontSize: 11,
+                lineColor: [200, 200, 200],
+                lineWidth: 0.1,
+                textColor: [0, 0, 0]
+            },
+            margin: { left: leftMargin, right: rightMargin }
+        });
+
+        cursorY = doc.autoTable.previous.finalY + 15;
+
+        // --- TEXTO ADICIONAL ---
+        const additionalLines = doc.splitTextToSize(additionalText, contentWidth);
+        doc.text(additionalLines, leftMargin, cursorY);
+        cursorY += (additionalLines.length * 6) + 20;
+
+        // --- ASSINATURA ---
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('Atenciosamente,', leftMargin, cursorY);
+        cursorY += 8;
+        
         doc.setFontSize(14);
-        doc.setTextColor(50, 50, 50); // cinza escuro
-        doc.text(`Proposta de orçamento para ${clientName}`, pageWidth / 2, cursorY, { align: "center" });
-        cursorY += 20;
+        doc.setTextColor(255, 0, 0);
+        doc.text(signature, leftMargin, cursorY);
+        cursorY += 10;
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text('VertoMaker - Impressões 3D de Qualidade', leftMargin, cursorY);
+
+        // --- SALVAR PDF ---
+        let safeClientName = clientName
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9-_]/g, "_");
+
+        const fileName = `Orcamento_${safeClientName || 'Cliente'}_${new Date().getTime()}.pdf`;
+        doc.save(fileName);
+
+    } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        alert('Erro ao gerar o PDF. Verifique o console para mais detalhes.');
     }
-
-    // Reset para texto normal
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-
-    // --- TEXTO PRINCIPAL ---
-    doc.text(mainText, leftMargin, cursorY, { maxWidth: contentWidth });
-    cursorY += doc.getTextDimensions(mainText, { maxWidth: contentWidth }).h + 10;
-
-    // --- TABELA ---
-    const tableRows = tableData.split('\n').map(row => row.split('/'));
-    doc.autoTable({
-        startY: cursorY,
-        head: [tableRows[0]],
-        body: tableRows.slice(1),
-        theme: 'grid',
-        styles: { cellPadding: 2, fontSize: 10 },
-        margin: { left: leftMargin, right: rightMargin }
-    });
-
-    cursorY = doc.autoTable.previous.finalY + 10;
-
-    // --- TEXTO ADICIONAL ---
-    doc.text(additionalText, leftMargin, cursorY, { maxWidth: contentWidth });
-    cursorY += doc.getTextDimensions(additionalText, { maxWidth: contentWidth }).h + 30;
-
-    // --- ASSINATURA ---
-    doc.setFontSize(14);
-    doc.text(signature, pageWidth / 2, cursorY, { align: 'center' });
-
-    // --- SALVAR PDF ---
-    // Sanitiza o nome do cliente para o arquivo
-    let safeClientName = clientName
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
-        .replace(/[^a-zA-Z0-9-_]/g, "_"); // troca caracteres inválidos por "_"
-
-    const fileName = `Orcamento_${safeClientName || 'Cliente'}.pdf`;
-    doc.save(fileName);
 }
