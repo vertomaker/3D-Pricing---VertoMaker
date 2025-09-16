@@ -1,4 +1,4 @@
-// Versão 3.2 - Correção do problema do logo no PDF
+// Versão 3.3 - Correção do problema do logo no PDF
 const { jsPDF } = window.jspdf;
 
 // Variável para armazenar o logo em Base64 após o carregamento
@@ -53,6 +53,20 @@ function loadLogo() {
             }
         }, 5000);
     });
+}
+
+// Função para formatar o tempo em horas e minutos
+function formatarTempo(horasDecimais) {
+    const horas = Math.floor(horasDecimais);
+    const minutos = Math.round((horasDecimais - horas) * 60);
+    
+    if (horas === 0) {
+        return `${minutos} min`;
+    } else if (minutos === 0) {
+        return `${horas} h`;
+    } else {
+        return `${horas} h e ${minutos} min`;
+    }
 }
 
 // Carrega o logo quando a página é carregada
@@ -223,7 +237,7 @@ async function gerarOrçamento() {
         // --- TEXTO PRINCIPAL ---
         const mainTextLines = doc.splitTextToSize(mainText, contentWidth);
         doc.text(mainTextLines, leftMargin, cursorY);
-        cursorY += (mainTextLines.length * 6) + 10;
+        cursorY += (mainTextLines.length * 6) + -10;
 
         // --- Tabela ---
         const tableRows = tableData.split('\n').map(row => row.split('/'));
@@ -248,12 +262,113 @@ async function gerarOrçamento() {
             margin: { left: leftMargin, right: rightMargin }
         });
 
-        cursorY = doc.autoTable.previous.finalY + 15;
+        cursorY = doc.autoTable.previous.finalY + 5;
+
+        // --- DETALHAMENTO DO ORÇAMENTO ---
+cursorY += 5;
+doc.setFontSize(11);
+doc.setTextColor(80, 80, 80);
+doc.setFont(undefined, 'bold');
+doc.text("Detalhamento do orçamento:", leftMargin, cursorY);
+cursorY += 6;
+doc.setFont(undefined, 'normal');
+
+// Calcular todos os custos novamente para o detalhamento
+const horas = parseFloat(document.getElementById('horas').value);
+const minutos = parseFloat(document.getElementById('minutos').value);
+const peso = parseFloat(document.getElementById('peso').value);
+const pecas = parseFloat(document.getElementById('pecas').value);
+const valorFilamento = parseFloat(document.getElementById('valorFilamento').value);
+const custoSetup = parseFloat(document.getElementById('custoSetup').value);
+const custoAcabamento = parseFloat(document.getElementById('custoAcabamento').value);
+const precoKWh = parseFloat(document.getElementById('precoKWh').value);
+const consumoMaquina = parseFloat(document.getElementById('consumoMaquina').value);
+const valorImpressora = parseFloat(document.getElementById('valorImpressora').value);
+const tempoRetorno = parseFloat(document.getElementById('tempoRetorno').value);
+const horasDepreciacao = parseFloat(document.getElementById('horasDepreciacao').value);
+const diasMes = parseFloat(document.getElementById('diasMes').value);
+const horasDia = parseFloat(document.getElementById('horasDia').value);
+const falhas = parseFloat(document.getElementById('falhas').value);
+const custosDiversos = parseFloat(document.getElementById('custosDiversos').value);
+const assinaturaSTLFLIX = parseFloat(document.getElementById('assinaturaSTLFLIX').value);
+const valorPinturaHora = parseFloat(document.getElementById('valorPinturaHora').value);
+const tempoPinturaHoras = parseFloat(document.getElementById('tempoPinturaHoras').value);
+const imposto = parseFloat(document.getElementById('imposto').value);
+
+const tempoHoras = horas + (minutos / 60);
+
+// Cálculos
+const custoMaterial = (peso / 1000) * valorFilamento;
+const consumoKWh = (consumoMaquina * tempoHoras) / 1000;
+const custoEnergia = consumoKWh * precoKWh;
+const custoFalhas = (custoMaterial + custoEnergia + custoSetup + custoAcabamento) * (falhas / 100);
+const desgasteMaquina = (valorImpressora / horasDepreciacao) * tempoHoras;
+const horasMensais = diasMes * horasDia;
+const retornoInvestimento = (valorImpressora / (tempoRetorno * horasMensais)) * tempoHoras;
+const custoSTLFLIX = (assinaturaSTLFLIX / (36 * horasMensais)) * tempoHoras;
+const custoPintura = valorPinturaHora * tempoPinturaHoras;
+
+const custoTotal = custoMaterial + custoEnergia + custoSetup + custoAcabamento + custoFalhas + desgasteMaquina + retornoInvestimento + custosDiversos + custoSTLFLIX + custoPintura;
+
+// Formatar o texto de detalhamento
+let detalhesText = "";
+
+// Tempo de produção
+detalhesText += `• ${formatarTempo(tempoHoras)} de impressão 3D\n`;
+
+if (tempoPinturaHoras > 0) {
+    detalhesText += `• ${formatarTempo(tempoPinturaHoras)} de pintura/acabamento manual\n`;
+}
+
+// Custos de material
+detalhesText += `• R$ ${custoMaterial.toFixed(2)} em filamento (${peso.toFixed(0)}g)\n`;
+
+// Custos de energia
+detalhesText += `• R$ ${custoEnergia.toFixed(2)} em energia elétrica\n`;
+
+// Custos de mão de obra e operação
+if (custoSetup > 0) {
+    detalhesText += `• R$ ${custoSetup.toFixed(2)} em preparação/configuração\n`;
+}
+
+if (custoAcabamento > 0) {
+    detalhesText += `• R$ ${custoAcabamento.toFixed(2)} em acabamento pós-impressão\n`;
+}
+
+// Custos indiretos
+if (custoFalhas > 0) {
+    detalhesText += `• R$ ${custoFalhas.toFixed(2)} para cobrir possíveis falhas (${falhas}%)\n`;
+}
+
+if (desgasteMaquina > 0) {
+    detalhesText += `• R$ ${desgasteMaquina.toFixed(2)} para manutenção/desgaste da impressora\n`;
+}
+
+if (retornoInvestimento > 0) {
+    detalhesText += `• R$ ${retornoInvestimento.toFixed(2)} para retorno do investimento\n`;
+}
+
+if (custoSTLFLIX > 0) {
+    detalhesText += `• R$ ${custoSTLFLIX.toFixed(2)} para assinatura de modelos 3D\n`;
+}
+
+if (custosDiversos > 0) {
+    detalhesText += `• R$ ${custosDiversos.toFixed(2)} em custos diversos/operacionais\n`;
+}
+
+// Apenas impostos (removida a linha de margem de lucro)
+if (imposto > 0) {
+    detalhesText += `• R$ ${(custoTotal * (imposto/100)).toFixed(2)} em impostos (${imposto}%)\n`;
+}
+
+const detalhesLines = doc.splitTextToSize(detalhesText, contentWidth);
+doc.text(detalhesLines, leftMargin + 5, cursorY);
+cursorY += (detalhesLines.length * 5) + 5;
 
         // --- TEXTO ADICIONAL ---
         const additionalLines = doc.splitTextToSize(additionalText, contentWidth);
         doc.text(additionalLines, leftMargin, cursorY);
-        cursorY += (additionalLines.length * 6) + 20;
+        cursorY += (additionalLines.length * 6) + 15;
 
         // --- ASSINATURA ---
         doc.setFontSize(12);
