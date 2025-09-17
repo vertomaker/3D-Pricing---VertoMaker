@@ -1,9 +1,54 @@
-// Versão 3.3 - Correção do problema do logo no PDF
+// Versão 3.4 - Correção do problema do logo no PDF
 const { jsPDF } = window.jspdf;
 
 // Variável para armazenar o logo em Base64 após o carregamento
 let vertoMakerLogoBase64 = null;
 let logoLoaded = false;
+
+// --- INÍCIO: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
+
+// Função para pegar os perfis do localStorage
+function getProfiles() {
+    const profiles = localStorage.getItem('filamentProfiles');
+    return profiles ? JSON.parse(profiles) : [];
+}
+
+// Função para salvar os perfis no localStorage
+function saveProfiles(profiles) {
+    localStorage.setItem('filamentProfiles', JSON.stringify(profiles));
+}
+
+// Função para renderizar os perfis na tela (lista e dropdown)
+function renderProfiles() {
+    const profiles = getProfiles();
+    const profilesListDiv = document.getElementById('profilesList');
+    const filamentSelector = document.getElementById('filamentSelector');
+
+    // Limpa a lista e o seletor atuais
+    profilesListDiv.innerHTML = '';
+    filamentSelector.innerHTML = '<option value="">-- Selecione um perfil --</option>';
+
+    profiles.forEach(profile => {
+        // Adiciona ao seletor (dropdown)
+        const option = document.createElement('option');
+        option.value = profile.value;
+        option.textContent = `${profile.name} (R$ ${profile.value.toFixed(2)})`;
+        filamentSelector.appendChild(option);
+
+        // Adiciona à lista de gerenciamento
+        const profileElement = document.createElement('div');
+        profileElement.className = 'flex justify-between items-center bg-gray-100 p-2 rounded-lg';
+        profileElement.innerHTML = `
+            <span><strong>${profile.name}</strong> - R$ ${profile.value.toFixed(2)}/kg</span>
+            <button class="delete-profile-btn bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded" data-name="${profile.name}">
+                Excluir
+            </button>
+        `;
+        profilesListDiv.appendChild(profileElement);
+    });
+}
+
+// --- FIM: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
 
 // Função para carregar o logo
 function loadLogo() {
@@ -69,11 +114,66 @@ function formatarTempo(horasDecimais) {
     }
 }
 
-// Carrega o logo quando a página é carregada
+// Event listener para quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
+    // Carrega o logo
     loadLogo().catch(error => {
         console.warn('Não foi possível carregar o logo:', error.message);
     });
+
+    // --- INÍCIO: EVENT LISTENERS DO GERENCIADOR ---
+
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const profileNameInput = document.getElementById('profileName');
+    const profileValueInput = document.getElementById('profileValue');
+    const profilesListDiv = document.getElementById('profilesList');
+    const filamentSelector = document.getElementById('filamentSelector');
+    const valorFilamentoInput = document.getElementById('valorFilamento');
+
+    // Salvar um novo perfil
+    saveProfileBtn.addEventListener('click', () => {
+        const name = profileNameInput.value.trim();
+        const value = parseFloat(profileValueInput.value);
+
+        if (name && value > 0) {
+            const profiles = getProfiles();
+            // Evita duplicados pelo nome
+            if (profiles.some(p => p.name === name)) {
+                alert('Já existe um perfil com este nome.');
+                return;
+            }
+            profiles.push({ name, value });
+            saveProfiles(profiles);
+            renderProfiles();
+            profileNameInput.value = '';
+            profileValueInput.value = '';
+        } else {
+            alert('Por favor, preencha o nome e um valor válido para o perfil.');
+        }
+    });
+
+    // Excluir um perfil (usando delegação de evento)
+    profilesListDiv.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-profile-btn')) {
+            const profileNameToDelete = event.target.getAttribute('data-name');
+            let profiles = getProfiles();
+            profiles = profiles.filter(p => p.name !== profileNameToDelete);
+            saveProfiles(profiles);
+            renderProfiles();
+        }
+    });
+
+    // Atualizar o campo de valor ao selecionar um perfil no dropdown
+    filamentSelector.addEventListener('change', (event) => {
+        if (event.target.value) {
+            valorFilamentoInput.value = event.target.value;
+        }
+    });
+
+    // Renderiza os perfis existentes ao carregar a página
+    renderProfiles();
+
+    // --- FIM: EVENT LISTENERS DO GERENCIADOR ---
 });
 
 // Função principal da calculadora
