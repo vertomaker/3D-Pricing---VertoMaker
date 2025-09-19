@@ -1,9 +1,5 @@
-// Versão 3.4 - Correção do problema do logo no PDF
+// Versão 3.5 - Correção do problema do logo no PDF
 const { jsPDF } = window.jspdf;
-
-// Variável para armazenar o logo em Base64 após o carregamento
-let vertoMakerLogoBase64 = null;
-let logoLoaded = false;
 
 // --- INÍCIO: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
 
@@ -50,53 +46,55 @@ function renderProfiles() {
 
 // --- FIM: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
 
-// Função para carregar o logo
-function loadLogo() {
-    return new Promise((resolve, reject) => {
-        // Se já está carregado, resolve imediatamente
-        if (logoLoaded && vertoMakerLogoBase64) {
-            resolve(vertoMakerLogoBase64);
-            return;
-        }
 
-        const img = new Image();
-        img.crossOrigin = 'Anonymous'; // Permite carregar imagens de diferentes origens
-        img.src = 'image/logopdf.png'; // Caminho do seu logo
-        
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                const imgWidth = 40; // Largura desejada no PDF
-                const imgHeight = 20; // Altura desejada no PDF
-                canvas.width = imgWidth;
-                canvas.height = imgHeight;
-                const ctx = canvas.getContext('2d');
-                
-                // Limpa o canvas e desenha a imagem
-                ctx.clearRect(0, 0, imgWidth, imgHeight);
-                ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-                
-                vertoMakerLogoBase64 = canvas.toDataURL('image/png');
-                logoLoaded = true;
-                console.log('Logo VertoMaker carregado com sucesso.');
-                resolve(vertoMakerLogoBase64);
-            } catch (error) {
-                console.error('Erro ao processar o logo:', error);
-                reject(error);
-            }
-        };
-        
-        img.onerror = (error) => {
-            console.error('Erro ao carregar o logo. Verifique o caminho (image/logopdf.png).', error);
-            reject(error);
-        };
-        
-        // Timeout para evitar que a promise fique pendente para sempre
-        setTimeout(() => {
-            if (!logoLoaded) {
-                reject(new Error('Timeout ao carregar o logo'));
-            }
-        }, 5000);
+// --- LÓGICA DO CATÁLOGO DE PEÇAS ---
+
+/**
+ * Busca os perfis de peças salvos no localStorage.
+ * @returns {Array} Um array de objetos de peças.
+ */
+function getPieces() {
+    const pieces = localStorage.getItem('pieceProfiles');
+    return pieces ? JSON.parse(pieces) : [];
+}
+
+/**
+ * Salva o array de perfis de peças no localStorage.
+ * @param {Array} pieces O array de peças a ser salvo.
+ */
+function savePieces(pieces) {
+    localStorage.setItem('pieceProfiles', JSON.stringify(pieces));
+}
+
+/**
+ * Atualiza a lista de peças na tela e o menu de seleção.
+ */
+function renderPieces() {
+    const pieces = getPieces();
+    const piecesListDiv = document.getElementById('piecesList');
+    const pieceSelector = document.getElementById('pieceSelector');
+
+    // Limpa o conteúdo atual para evitar duplicação
+    piecesListDiv.innerHTML = '';
+    pieceSelector.innerHTML = '<option value="">-- Selecione uma peça --</option>';
+    
+    pieces.forEach((piece, index) => {
+        // Adiciona a peça ao menu de seleção (dropdown)
+        const option = document.createElement('option');
+        option.value = index; // O valor da opção é o índice da peça no array
+        option.textContent = piece.name;
+        pieceSelector.appendChild(option);
+
+        // Adiciona a peça à lista de gerenciamento (para visualização e exclusão)
+        const pieceElement = document.createElement('div');
+        pieceElement.className = 'flex justify-between items-center bg-gray-100 p-2 rounded-lg';
+        pieceElement.innerHTML = `
+            <span><strong>${piece.name}</strong> (${piece.hours}h ${piece.minutes}m | ${piece.weight}g)</span>
+            <button class="delete-piece-btn bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded" data-name="${piece.name}">
+                Excluir
+            </button>
+        `;
+        piecesListDiv.appendChild(pieceElement);
     });
 }
 
@@ -116,10 +114,7 @@ function formatarTempo(horasDecimais) {
 
 // Event listener para quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    // Carrega o logo
-    loadLogo().catch(error => {
-        console.warn('Não foi possível carregar o logo:', error.message);
-    });
+   
 
     // --- INÍCIO: EVENT LISTENERS DO GERENCIADOR ---
 
@@ -174,6 +169,72 @@ document.addEventListener('DOMContentLoaded', function() {
     renderProfiles();
 
     // --- FIM: EVENT LISTENERS DO GERENCIADOR ---
+
+
+    // --- LÓGICA PARA O CATÁLOGO DE PEÇAS ---
+
+    // 1. Seleciona os elementos do HTML
+    const savePieceBtn = document.getElementById('savePieceBtn');
+    const newPieceNameInput = document.getElementById('newPieceName');
+    const newPieceHoursInput = document.getElementById('newPieceHours');
+    const newPieceMinutesInput = document.getElementById('newPieceMinutes');
+    const newPieceWeightInput = document.getElementById('newPieceWeight');
+    const piecesListDiv = document.getElementById('piecesList');
+    const pieceSelector = document.getElementById('pieceSelector');
+
+    // 2. Evento para o botão "Salvar Peça"
+    savePieceBtn.addEventListener('click', () => {
+        const name = newPieceNameInput.value.trim();
+        const hours = parseInt(newPieceHoursInput.value) || 0;
+        const minutes = parseInt(newPieceMinutesInput.value) || 0;
+        const weight = parseFloat(newPieceWeightInput.value);
+
+        if (name && weight > 0) {
+            const pieces = getPieces();
+            // Verifica se já não existe uma peça com o mesmo nome
+            if (pieces.some(p => p.name === name)) {
+                alert('Já existe uma peça com este nome no catálogo.');
+                return;
+            }
+            pieces.push({ name, hours, minutes, weight });
+            savePieces(pieces);
+            renderPieces(); // Atualiza a lista na tela
+            
+            // Limpa os campos de entrada
+            newPieceNameInput.value = '';
+            newPieceHoursInput.value = '0';
+            newPieceMinutesInput.value = '0';
+            newPieceWeightInput.value = '0';
+        } else {
+            alert('Por favor, preencha o nome e um peso válido para a peça.');
+        }
+    });
+
+    // 3. Evento para os botões "Excluir" (na lista de peças)
+    piecesListDiv.addEventListener('click', (event) => {
+        if (event.target.classList.contains('delete-piece-btn')) {
+            const nameToDelete = event.target.getAttribute('data-name');
+            const updatedPieces = getPieces().filter(p => p.name !== nameToDelete);
+            savePieces(updatedPieces);
+            renderPieces(); // Atualiza a lista na tela
+        }
+    });
+
+    // 4. Evento para o menu de seleção que preenche os campos da calculadora
+    pieceSelector.addEventListener('change', (event) => {
+        const pieceIndex = event.target.value;
+        if (pieceIndex !== "") { // Garante que não é a opção "-- Selecione --"
+            const selectedPiece = getPieces()[pieceIndex];
+            if (selectedPiece) {
+                document.getElementById('horas').value = selectedPiece.hours;
+                document.getElementById('minutos').value = selectedPiece.minutes;
+                document.getElementById('peso').value = selectedPiece.weight;
+            }
+        }
+    });
+
+    // 5. Renderiza a lista de peças quando a página carrega
+    renderPieces();
 });
 
 // Função principal da calculadora
@@ -295,17 +356,6 @@ async function gerarOrçamento() {
         const contentWidth = pageWidth - leftMargin - rightMargin;
 
         let cursorY = 20; // Posição inicial do cursor
-
-        // --- Cabeçalho com Logo ---
-        try {
-            const logoData = await loadLogo();
-            if (logoData) {
-                doc.addImage(logoData, 'PNG', leftMargin, 10, 40, 20);
-                cursorY = 40; // Ajusta a posição após o logo
-            }
-        } catch (error) {
-            console.warn('Logo não disponível, continuando sem ele:', error.message);
-        }
 
         // Título do orçamento (centralizado)
         doc.setFontSize(16);
@@ -483,7 +533,7 @@ cursorY += (detalhesLines.length * 5) + 5;
         
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text('VertoMaker - Impressões 3D de Qualidade', leftMargin, cursorY);
+        doc.text('VertoMaker - do seu jeito. do seu universo.', leftMargin, cursorY);
 
         // --- SALVAR PDF ---
         let safeClientName = clientName
