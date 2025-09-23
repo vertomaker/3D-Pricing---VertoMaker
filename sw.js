@@ -1,5 +1,5 @@
 // Nome do cache principal, atualize para forçar a nova versão
-const CACHE_NAME = 'calc3d-store-v3.2';
+const CACHE_NAME = 'calc3d-store-v3.2.1';
 
 // Lista de arquivos essenciais que serão pré-armazenados em cache
 const urlsToCache = [
