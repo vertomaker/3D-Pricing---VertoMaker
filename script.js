@@ -1,4 +1,4 @@
-// Versão 3.5 - Correção do problema do logo no PDF
+// Versão 3.6 - Adição de MARKUP / Valor Logista
 const { jsPDF } = window.jspdf;
 
 // --- INÍCIO: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
@@ -258,6 +258,9 @@ function calcular() {
     const imposto = parseFloat(document.getElementById('imposto').value);
     const lucro = parseFloat(document.getElementById('lucro').value);
     const custosDiversos = parseFloat(document.getElementById('custosDiversos').value);
+    const markup = parseFloat(document.getElementById('markup').value);
+    const taxaCartao = parseFloat(document.getElementById('taxaCartao').value);
+    const custoAnuncio = parseFloat(document.getElementById('custoAnuncio').value);
     const assinaturaSTLFLIX = parseFloat(document.getElementById('assinaturaSTLFLIX').value);
     const valorPinturaHora = parseFloat(document.getElementById('valorPinturaHora').value);
     const tempoPinturaHoras = parseFloat(document.getElementById('tempoPinturaHoras').value);
@@ -277,56 +280,62 @@ function calcular() {
 
     const custoTotal = custoMaterial + custoEnergia + custoSetup + custoAcabamento + custoFalhas + desgasteMaquina + retornoInvestimento + custosDiversos + custoSTLFLIX + custoPintura;
 
-    const unidadeSemImposto = custoTotal * (1 + lucro / 100);
-    const unidadeComImposto = unidadeSemImposto * (1 + imposto / 100);
-    const loteSemImposto = unidadeSemImposto * pecas;
-    const loteComImposto = unidadeComImposto * pecas;
+    // CÁLCULOS DO CONSUMIDOR FINAL (Com Markup, Imposto, Taxa de Cartão e Custo de Anúncio)
+    const precoProducaoFinal = custoTotal * markup;
+    const custoComImpostoFinal = precoProducaoFinal * (1 + imposto / 100);
+    const custoComCartaoFinal = custoComImpostoFinal * (1 + taxaCartao / 100);
+    const precoConsumidorFinal = custoComCartaoFinal * (1 + custoAnuncio / 100);
 
-    // Condição para determinar qual valor será usado no orçamento
-    let valorUnitarioFinal;
-    let valorTotalFinal;
-    let tituloOrcamento;
+    // CÁLCULOS DO LOJISTA (Com Markup, Imposto, mas sem Taxa de Cartão ou Custo de Anúncio)
+    const precoProducaoLojista = custoTotal * markup;
+    const precoLojista = precoProducaoLojista * (1 + imposto / 100);
 
-    if (imposto > 0) {
-        valorUnitarioFinal = unidadeComImposto;
-        valorTotalFinal = loteComImposto;
-        tituloOrcamento = "Orçamento com Imposto";
-    } else {
-        valorUnitarioFinal = unidadeSemImposto;
-        valorTotalFinal = loteSemImposto;
-        tituloOrcamento = "Orçamento sem Imposto";
-    }
+    // CÁLCULO DE LUCRO LÍQUIDO E BRUTO
+    const lucroBrutoFinal = precoConsumidorFinal - custoTotal;
+    const lucroLiquidoFinal = lucroBrutoFinal - (precoConsumidorFinal * (imposto / 100)) - (precoConsumidorFinal * (taxaCartao / 100)) - (precoConsumidorFinal * (custoAnuncio / 100));
 
+    const lucroBrutoLojista = precoLojista - custoTotal;
+    const lucroLiquidoLojista = lucroBrutoLojista - (precoLojista * (imposto / 100));
+
+    // Agora você terá o `precoConsumidorFinal` e o `precoLojista` para usar nos resultados.
+    // Lembre-se de substituir onde `loteComImposto` era usado para mostrar o valor total do "Preço Consumidor Final".
+    const loteFinal = precoConsumidorFinal * pecas;
+  
     // Exibe os resultados na tela
     const saida = `
-        <p><b>Valor de Produção por Unidade:</b> R$ ${custoTotal.toFixed(2)}</p>
-        <p><b>Unidade sem Imposto:</b> R$ ${unidadeSemImposto.toFixed(2)}</p>
-        <p><b>Unidade com Imposto:</b> R$ ${unidadeComImposto.toFixed(2)}</p>
-        <p><b>Lote sem Imposto:</b> R$ ${loteSemImposto.toFixed(2)}</p>
-        <p><b>Lote com Imposto:</b> R$ ${loteComImposto.toFixed(2)}</p>
-        <hr class="my-2">
-        <p><b>Custo Material:</b> R$ ${custoMaterial.toFixed(2)}</p>
-        <p><b>Custo Energia:</b> R$ ${custoEnergia.toFixed(2)}</p>
-        <p><b>Custo de Setup:</b> R$ ${custoSetup.toFixed(2)}</p>
-        <p><b>Custo de Acabamento:</b> R$ ${custoAcabamento.toFixed(2)}</p>
-        <p><b>Custo de Falhas:</b> R$ ${custoFalhas.toFixed(2)}</p>
-        <p><b>Desgaste da Máquina:</b> R$ ${desgasteMaquina.toFixed(2)}</p>
-        <p><b>Retorno de Investimento:</b> R$ ${retornoInvestimento.toFixed(2)}</p>
-        <p><b>Custo STLFLIX:</b> R$ ${custoSTLFLIX.toFixed(2)}</p>
-        <p><b>Custos Diversos:</b> R$ ${custosDiversos.toFixed(2)}</p>
-        <p><b>Custo Pintura:</b> R$ ${custoPintura.toFixed(2)}</p>
+    <h3 class="text-xl font-bold mb-2 text-gray-700">Precificação para Consumidor Final</h3>
+    <p><b>Preço Final por Unidade:</b> R$ ${precoConsumidorFinal.toFixed(2)}</p>
+    <p><b>Lucro Bruto por Unidade:</b> R$ ${lucroBrutoFinal.toFixed(2)}</p>
+    <p><b>Lucro Líquido por Unidade:</b> R$ ${lucroLiquidoFinal.toFixed(2)}</p>
+    <hr class="my-4">
+    <h3 class="text-xl font-bold mb-2 text-gray-700">Precificação para Lojista</h3>
+    <p><b>Preço Final por Unidade:</b> R$ ${precoLojista.toFixed(2)}</p>
+    <p><b>Lucro Bruto por Unidade:</b> R$ ${lucroBrutoLojista.toFixed(2)}</p>
+    <p><b>Lucro Líquido por Unidade:</b> R$ ${lucroLiquidoLojista.toFixed(2)}</p>
+    <hr class="my-4">
+    <h3 class="text-xl font-bold mb-2 text-gray-700">Detalhes de Custos</h3>
+    <p><b>Custo Material:</b> R$ ${custoMaterial.toFixed(2)}</p>
+    <p><b>Custo Energia:</b> R$ ${custoEnergia.toFixed(2)}</p>
+    <p><b>Custo de Setup:</b> R$ ${custoSetup.toFixed(2)}</p>
+    <p><b>Custo de Acabamento:</b> R$ ${custoAcabamento.toFixed(2)}</p>
+    <p><b>Custo de Falhas:</b> R$ ${custoFalhas.toFixed(2)}</p>
+    <p><b>Desgaste da Máquina:</b> R$ ${desgasteMaquina.toFixed(2)}</p>
+    <p><b>Retorno de Investimento:</b> R$ ${retornoInvestimento.toFixed(2)}</p>
+    <p><b>Custo STLFLIX:</b> R$ ${custoSTLFLIX.toFixed(2)}</p>
+    <p><b>Custos Diversos:</b> R$ ${custosDiversos.toFixed(2)}</p>
+    <p><b>Custo Pintura:</b> R$ ${custoPintura.toFixed(2)}</p>
     `;
 
     document.getElementById('saida').innerHTML = saida;
     document.getElementById('resultados').classList.remove('hidden');
 
     // Preenche e exibe a seção de orçamento
-    preencherOrcamento(valorUnitarioFinal, valorTotalFinal, pecas, tituloOrcamento);
+    preencherOrcamento(precoConsumidorFinal, loteFinal, pecas);
     document.getElementById('orcamento-section').classList.remove('hidden');
 }
 
 // Função para preencher os dados do orçamento com base no cálculo
-function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
+function preencherOrcamento(unidadeFinal, loteFinal, pecas) {
     const valorUnitarioFormatado = unidadeFinal.toFixed(2).replace('.', ',');
     const valorTotalFormatado = loteFinal.toFixed(2).replace('.', ',');
     const nomePeca = `Impressão 3D (${pecas} peça${pecas > 1 ? 's' : ''})`;
