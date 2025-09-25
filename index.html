@@ -60,11 +60,22 @@
 
         <h2 class="text-2xl font-bold mb-4 text-gray-700">Calcular Custos</h2>
         
+        <div class="mb-4 bg-gray-50 p-4 rounded-lg border">
+            <label for="calcMode" class="block font-medium text-lg mb-2">Método de Cálculo:</label>
+            <select id="calcMode" class="w-full border rounded-lg p-2 bg-white" onchange="toggleCalcMode()">
+            <option value="margin">Margem de Lucro (%)</option>
+            <option value="markup">Markup (Multiplicador)</option>
+            </select>
+            <p id="calcModeHelp" class="text-sm text-gray-600 mt-1">
+            <span id="helpText">Margem calculada sobre o preço de venda</span>
+            </p>
+            </div>
+
         <div class="mb-4">
             <label for="pieceSelector" class="block font-medium text-lg">Carregar Peça do Catálogo</label>
-            <select id="pieceSelector" class="w-full border rounded-lg p-2 bg-gray-50">
+                <select id="pieceSelector" class="w-full border rounded-lg p-2 bg-gray-50">
                 <option value="">-- Selecione uma peça para preencher os dados --</option>
-            </select>
+                </select>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,7 +180,7 @@
             <div id="saida" class="space-y-2 text-gray-800 bg-gray-50 p-4 rounded-xl border"></div>
         </div>
 
-        <div id="orcamento-section" class="mt-8 hidden">
+        <div id="orcamento-section" class="mt-8" style="display: none;">
             <h2 class="text-2xl font-bold mb-4 text-gray-700">Gerar Orçamento PDF</h2>
             <div class="grid grid-cols-1 gap-4">
                 <div>
@@ -214,10 +225,63 @@ Abaixo detalhamos cada componente do valor final.
     </div>
 
     <script src="script.js"></script>
-    <script>
-        if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("sw.js").then(() => console.log("Service Worker registrado"));
+    
+<script>
+// Limpar Service Workers antigos
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            registration.unregister();
+            console.log('Service Worker desregistrado');
         }
-    </script>
+    });
+    
+    // Limpar cache
+    caches.keys().then(function(names) {
+        for (let name of names) {
+            caches.delete(name);
+            console.log('Cache limpo:', name);
+        }
+    });
+}
+</script>
+
+<style>
+.calc-mode-selector {
+    transition: all 0.3s ease;
+}
+
+.calc-mode-selector select {
+    border: 2px solid #e5e7eb;
+    transition: border-color 0.3s ease;
+}
+
+.calc-mode-selector select:focus {
+    border-color: #ef4444;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+#calcModeHelp {
+    transition: color 0.3s ease;
+}
+</style>
+
+<style>
+/* Garantir que a seção de orçamento seja mostrada */
+#orcamento-section {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Override para quando a seção deve ser visível */
+#orcamento-section[style*="display: block"] {
+    display: block !important;
+}
+
+.hidden {
+    display: none !important;
+}
+</style>
+
 </body>
 </html>
