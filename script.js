@@ -1,4 +1,4 @@
-// Versão 3.6.1 - Correção do problema do logo no PDF
+// Versão 3.6.2 - Adição de MARKUP
 const { jsPDF } = window.jspdf;
 
 // --- INÍCIO: LÓGICA DO GERENCIADOR DE FILAMENTOS ---
@@ -237,7 +237,19 @@ document.addEventListener('DOMContentLoaded', function() {
     renderPieces();
 });
 
-// Função principal da calculadora
+// Função para preencher os dados do orçamento - ADICIONE ESTA FUNÇÃO
+function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
+    const valorUnitarioFormatado = unidadeFinal.toFixed(2).replace('.', ',');
+    const valorTotalFormatado = loteFinal.toFixed(2).replace('.', ',');
+    const nomePeca = `Impressão 3D (${pecas} peça${pecas > 1 ? 's' : ''})`;
+
+    const tableData = `Descrição/Valor Final\n${nomePeca}/R$ ${valorTotalFormatado}`;
+    
+    document.getElementById('tableData').value = tableData;
+    console.log('Orçamento preenchido com sucesso');
+}
+
+// Função principal da calculadora - VERSÃO COMPLETA CORRIGIDA
 function calcular() {
     // Entradas
     const horas = parseFloat(document.getElementById('horas').value);
@@ -261,10 +273,12 @@ function calcular() {
     const assinaturaSTLFLIX = parseFloat(document.getElementById('assinaturaSTLFLIX').value);
     const valorPinturaHora = parseFloat(document.getElementById('valorPinturaHora').value);
     const tempoPinturaHoras = parseFloat(document.getElementById('tempoPinturaHoras').value);
+    
+    const calcMode = document.getElementById('calcMode').value;
 
     const tempoHoras = horas + (minutos / 60);
 
-    // Cálculos
+    // Cálculos dos custos
     const custoMaterial = (peso / 1000) * valorFilamento;
     const consumoKWh = (consumoMaquina * tempoHoras) / 1000;
     const custoEnergia = consumoKWh * precoKWh;
@@ -277,16 +291,25 @@ function calcular() {
 
     const custoTotal = custoMaterial + custoEnergia + custoSetup + custoAcabamento + custoFalhas + desgasteMaquina + retornoInvestimento + custosDiversos + custoSTLFLIX + custoPintura;
 
-    const unidadeSemImposto = custoTotal * (1 + lucro / 100);
-    const unidadeComImposto = unidadeSemImposto * (1 + imposto / 100);
-    const loteSemImposto = unidadeSemImposto * pecas;
-    const loteComImposto = unidadeComImposto * pecas;
+    let unidadeSemImposto, unidadeComImposto, loteSemImposto, loteComImposto;
 
-    // Condição para determinar qual valor será usado no orçamento
-    let valorUnitarioFinal;
-    let valorTotalFinal;
-    let tituloOrcamento;
+    // Verificar modo de cálculo
+    if (calcMode === 'markup') {
+        // Cálculo por MARKUP
+        const markup = lucro;
+        unidadeSemImposto = custoTotal * markup;
+        unidadeComImposto = unidadeSemImposto * (1 + imposto / 100);
+    } else {
+        // Cálculo por MARGEM
+        unidadeSemImposto = custoTotal / (1 - (lucro / 100));
+        unidadeComImposto = unidadeSemImposto * (1 + imposto / 100);
+    }
 
+    loteSemImposto = unidadeSemImposto * pecas;
+    loteComImposto = unidadeComImposto * pecas;
+
+    // Determinar valores finais
+    let valorUnitarioFinal, valorTotalFinal, tituloOrcamento;
     if (imposto > 0) {
         valorUnitarioFinal = unidadeComImposto;
         valorTotalFinal = loteComImposto;
@@ -297,14 +320,22 @@ function calcular() {
         tituloOrcamento = "Orçamento sem Imposto";
     }
 
-    // Exibe os resultados na tela
+    // Exibir resultados
+    const modoCalculo = calcMode === 'markup' ? 'Markup' : 'Margem de Lucro';
+    const parametroCalculo = calcMode === 'markup' ? `Markup: ${lucro}x` : `Margem: ${lucro}%`;
+
     const saida = `
-        <p><b>Valor de Produção por Unidade:</b> R$ ${custoTotal.toFixed(2)}</p>
+        <div class="bg-green-50 p-3 rounded-lg mb-3">
+            <p class="font-bold text-green-800">Modo de Cálculo: ${modoCalculo}</p>
+            <p class="text-green-700">${parametroCalculo}</p>
+        </div>
+        <p><b>Custo Total de Produção por Unidade:</b> R$ ${custoTotal.toFixed(2)}</p>
         <p><b>Unidade sem Imposto:</b> R$ ${unidadeSemImposto.toFixed(2)}</p>
         <p><b>Unidade com Imposto:</b> R$ ${unidadeComImposto.toFixed(2)}</p>
-        <p><b>Lote sem Imposto:</b> R$ ${loteSemImposto.toFixed(2)}</p>
-        <p><b>Lote com Imposto:</b> R$ ${loteComImposto.toFixed(2)}</p>
-        <hr class="my-2">
+        <p><b>Lote sem Imposto (${pecas} peças):</b> R$ ${loteSemImposto.toFixed(2)}</p>
+        <p><b>Lote com Imposto (${pecas} peças):</b> R$ ${loteComImposto.toFixed(2)}</p>
+        <hr class="my-3">
+        <p class="font-bold text-gray-700">Detalhamento dos Custos:</p>
         <p><b>Custo Material:</b> R$ ${custoMaterial.toFixed(2)}</p>
         <p><b>Custo Energia:</b> R$ ${custoEnergia.toFixed(2)}</p>
         <p><b>Custo de Setup:</b> R$ ${custoSetup.toFixed(2)}</p>
@@ -320,21 +351,42 @@ function calcular() {
     document.getElementById('saida').innerHTML = saida;
     document.getElementById('resultados').classList.remove('hidden');
 
-    // Preenche e exibe a seção de orçamento
+    // Preencher e mostrar a seção de orçamento
     preencherOrcamento(valorUnitarioFinal, valorTotalFinal, pecas, tituloOrcamento);
-    document.getElementById('orcamento-section').classList.remove('hidden');
+    
+    // Mostrar a seção de orçamento
+    const orcamentoSection = document.getElementById('orcamento-section');
+    orcamentoSection.style.display = 'block';
+    orcamentoSection.classList.remove('hidden');
+    
+    console.log('Cálculo concluído - Seção de orçamento deve estar visível');
 }
 
-// Função para preencher os dados do orçamento com base no cálculo
-function preencherOrcamento(unidadeFinal, loteFinal, pecas, tituloOrcamento) {
-    const valorUnitarioFormatado = unidadeFinal.toFixed(2).replace('.', ',');
-    const valorTotalFormatado = loteFinal.toFixed(2).replace('.', ',');
-    const nomePeca = `Impressão 3D (${pecas} peça${pecas > 1 ? 's' : ''})`;
+// Função para alternar entre os modos de cálculo - VERSÃO SIMPLIFICADA
+function toggleCalcMode() {
+    const calcMode = document.getElementById('calcMode').value;
+    const lucroLabel = document.querySelector('label[for="lucro"]');
+    const lucroInput = document.getElementById('lucro');
+    const helpText = document.getElementById('helpText');
 
-    const tableData = `Descrição/Valor Final\n${nomePeca}/R$ ${valorTotalFormatado}`;
+    if (calcMode === 'markup') {
+        lucroLabel.innerHTML = 'Markup (Multiplicador):';
+        lucroInput.placeholder = 'Ex: 3 para triplicar o custo';
+        helpText.innerHTML = 'Markup: multiplicador aplicado sobre o custo total';
+        
+        if (lucroInput.value === '75') lucroInput.value = '3';
+    } else {
+        lucroLabel.innerHTML = 'Margem de Lucro (%):';
+        lucroInput.placeholder = 'Ex: 50 para 50% de margem';
+        helpText.innerHTML = 'Margem: percentual sobre o preço de venda';
+        
+        if (lucroInput.value === '3') lucroInput.value = '75';
+    }
     
-    document.getElementById('tableData').value = tableData;
-    // O título será atualizado dentro da função gerarOrcamento()
+    // Recalcular se já há resultados
+    if (!document.getElementById('resultados').classList.contains('hidden')) {
+        calcular();
+    }
 }
 
 // Função para gerar o PDF - VERSÃO CORRIGIDA
